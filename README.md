@@ -15,12 +15,15 @@ that has the highest total volume is then written out as a new file.
 
 For a visual explanation, here's some ASCII art showing the volume of an input audio file:
 
+```
+
             *     
            ***   **  *
  *         **** **** *
 **** * ** ************* * ** *
 ----------------------------------
 0.0s            1.0s           2.0s
+```
 
 The goal is to identify the important section where somebody is talking, and ignore the preamble
 and trailing parts which just contain background noise. Because this background noise isn't silence,
@@ -29,6 +32,7 @@ identify the important section, which above is obviously around the 1.0s mark. S
 only pick a second of audio to output, the filter will try to fit as much of the high volume section
 within that window as possible, like this:
 
+```
          < one second  > 
          |  *          |
          | ***   **  * |
@@ -36,6 +40,7 @@ within that window as possible, like this:
 **** * **|*************|* ** *
 ---------+-------------+----------
 0.0s     |      1.0s   |       2.0s
+```
 
 The other parts will be cropped out, and just that section will be saved.
 
