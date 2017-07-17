@@ -71,9 +71,9 @@ void TrimToLoudestSegment(const std::vector<float>& input,
   float loudest_volume = current_volume_sum;
   for (int64_t i = desired_samples; i < input_size; ++i) {
     const float trailing_value = input[i - desired_samples];
-    current_volume_sum -= sqrtf(trailing_value * trailing_value);
+    current_volume_sum -= fabsf(trailing_value);
     const float leading_value = input[i];
-    current_volume_sum += sqrtf(leading_value * leading_value);
+    current_volume_sum += fabsf(leading_value);
     if (current_volume_sum > loudest_volume) {
       loudest_volume = current_volume_sum;
       loudest_end_index = i;
