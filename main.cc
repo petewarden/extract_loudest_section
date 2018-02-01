@@ -13,33 +13,34 @@
  limitations under the License.
  ==============================================================================*/
 
-#include <sys/mman.h>
-#include <sys/types.h>
-#include <fcntl.h>
-#include <unistd.h>
-#include <sys/stat.h>
 #include <assert.h>
-#include <math.h>
+#include <fcntl.h>
 #include <glob.h>
+#include <math.h>
+#include <sys/mman.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <unistd.h>
 
-#include <iostream>
 #include <fstream>
+#include <iostream>
 #include <set>
 #include <vector>
 
 #include "wav_io.h"
 
 class MemMappedFile {
-public:
+ public:
   MemMappedFile(const std::string& filename) {
     const char* c_filename = filename.c_str();
     struct stat st;
     stat(c_filename, &st);
     filesize_ = st.st_size;
     fd_ = open(c_filename, O_RDONLY, 0);
-    data_ = reinterpret_cast<uint8_t*>(mmap(NULL, filesize_, PROT_READ, MAP_PRIVATE, fd_, 0));
+    data_ = reinterpret_cast<uint8_t*>(
+        mmap(NULL, filesize_, PROT_READ, MAP_PRIVATE, fd_, 0));
     assert(fd_ != -1);
-    //Execute mmap
+    // Execute mmap
     assert(data_ != MAP_FAILED);
   }
   ~MemMappedFile() {
@@ -54,8 +55,7 @@ public:
 };
 
 void TrimToLoudestSegment(const std::vector<float>& input,
-                          int64_t desired_samples,
-                          std::vector<float>* output) {
+                          int64_t desired_samples, std::vector<float>* output) {
   const int64_t input_size = input.size();
   if (desired_samples >= input_size) {
     *output = input;
@@ -81,26 +81,33 @@ void TrimToLoudestSegment(const std::vector<float>& input,
   }
   const int64_t loudest_start_index = loudest_end_index - desired_samples;
   output->resize(desired_samples);
-  std::copy(input.begin() + loudest_start_index, input.begin() + loudest_end_index, output->begin());
+  std::copy(input.begin() + loudest_start_index,
+            input.begin() + loudest_end_index, output->begin());
 }
 
-Status TrimFile(const std::string& input_filename, const std::string& output_filename, const int64_t desired_length_ms) {
-
+Status TrimFile(const std::string& input_filename,
+                const std::string& output_filename,
+                const int64_t desired_length_ms) {
   MemMappedFile input_file(input_filename);
 
   std::vector<float> wav_samples;
   uint32_t sample_count;
   uint16_t channel_count;
   uint32_t sample_rate;
-  Status load_wav_status = DecodeLin16WaveAsFloatVector(input_file.data_, input_file.filesize_, &wav_samples, &sample_count, &channel_count, &sample_rate);
+  Status load_wav_status = DecodeLin16WaveAsFloatVector(
+      input_file.data_, input_file.filesize_, &wav_samples, &sample_count,
+      &channel_count, &sample_rate);
   if (!load_wav_status.ok()) {
-    std::cerr << "Failed to decode '" << input_filename << "' as a WAV: " << load_wav_status << std::endl;
+    std::cerr << "Failed to decode '" << input_filename
+              << "' as a WAV: " << load_wav_status << std::endl;
     return load_wav_status;
   }
 
   if (channel_count != 1) {
-    std::cerr << "Stereo or wavs with more channels aren't supported" << std::endl;
-    return errors::InvalidArgument("Stereo or multi-channel wavs aren't supported");
+    std::cerr << "Stereo or wavs with more channels aren't supported"
+              << std::endl;
+    return errors::InvalidArgument(
+        "Stereo or multi-channel wavs aren't supported");
   }
 
   const int64_t desired_samples = (desired_length_ms * sample_rate) / 1000;
@@ -108,7 +115,9 @@ Status TrimFile(const std::string& input_filename, const std::string& output_fil
   TrimToLoudestSegment(wav_samples, desired_samples, &trimmed_samples);
 
   std::string output_wav_data;
-  Status save_wav_status = EncodeAudioAsS16LEWav(trimmed_samples.data(), sample_rate, channel_count, trimmed_samples.size(), &output_wav_data);
+  Status save_wav_status =
+      EncodeAudioAsS16LEWav(trimmed_samples.data(), sample_rate, channel_count,
+                            trimmed_samples.size(), &output_wav_data);
 
   std::ofstream output_file(output_filename);
   output_file.write(output_wav_data.c_str(), output_wav_data.length());
@@ -118,23 +127,25 @@ Status TrimFile(const std::string& input_filename, const std::string& output_fil
   return Status::OK();
 }
 
-void SplitFilename (const std::string& full_path, std::string* dir, std::string* filename) {
+void SplitFilename(const std::string& full_path, std::string* dir,
+                   std::string* filename) {
   std::size_t separator_index = full_path.find_last_of("/\\");
   *dir = full_path.substr(0, separator_index);
   *filename = full_path.substr(separator_index + 1);
 }
 
-int main(int argc, const char * argv[]) {
-
+int main(int argc, const char* argv[]) {
   if (argc < 3) {
-    std::cerr << "You must supply input and output wav files as arguments" << std::endl;
+    std::cerr
+        << "You must supply paths to input and output wav files as arguments"
+        << std::endl;
     return -1;
   }
   const std::string input_glob = argv[1];
   glob_t glob_result;
   glob(input_glob.c_str(), GLOB_TILDE, nullptr, &glob_result);
   std::vector<std::string> input_filenames;
-  for (int64_t i=0; i < glob_result.gl_pathc; ++i) {
+  for (int64_t i = 0; i < glob_result.gl_pathc; ++i) {
     input_filenames.push_back(std::string(glob_result.gl_pathv[i]));
   }
   globfree(&glob_result);
@@ -149,7 +160,6 @@ int main(int argc, const char * argv[]) {
     std::string output_base;
     SplitFilename(output_filename, &output_dir, &output_base);
     output_dirs.insert(output_dir);
-
   }
 
   for (const std::string& output_dir : output_dirs) {
@@ -161,9 +171,11 @@ int main(int argc, const char * argv[]) {
     const std::string input_filename = input_filenames[i];
     const std::string output_filename = output_filenames[i];
     const int64_t desired_length_ms = 1000;
-    Status trim_status = TrimFile(input_filename, output_filename, desired_length_ms);
+    Status trim_status =
+        TrimFile(input_filename, output_filename, desired_length_ms);
     if (!trim_status.ok()) {
-      std::cerr << "Failed on '" << input_filename << "' => '" << output_filename << "' with error " << trim_status;
+      std::cerr << "Failed on '" << input_filename << "' => '"
+                << output_filename << "' with error " << trim_status;
       return -1;
     }
   }

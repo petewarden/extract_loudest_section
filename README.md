@@ -46,12 +46,13 @@ The other parts will be cropped out, and just that section will be saved.
 
 This tool isn't designed for general use or flexibility:
 
- - I've only got an Xcode build, but it has no dependencies outside of Posix and standard libs, so
-adding a makefile or porting shouldn't be too hard.
-
  - It only deals with mono 16-bit WAVs, since that's all I need.
 
  - It takes two command line arguments, the first is the glob for the .wavs to read (for example
 "*/*.wav") and the second is the root of the output directory. Sub-directories one level deep
 will be created, and output files will be placed with the same names in those directories under the
 output root. This peculiar setup is so that it's easy for me to process my files of speech data.'
+
+## Building
+
+There's a Makefile for Linux and Xcode project for MacOS.
