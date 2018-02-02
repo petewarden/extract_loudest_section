@@ -90,7 +90,8 @@ void TrimToLoudestSegment(const std::vector<float>& input,
 
 Status TrimFile(const std::string& input_filename,
                 const std::string& output_filename,
-                const int64_t desired_length_ms) {
+                const int64_t desired_length_ms,
+		const float min_volume) {
   MemMappedFile input_file(input_filename);
 
   std::vector<float> wav_samples;
@@ -118,12 +119,22 @@ Status TrimFile(const std::string& input_filename,
       }
       mono_samples[i] = total / channel_count;
     }
-     wav_samples = mono_samples;
+    wav_samples = mono_samples;
   }
 
   const int64_t desired_samples = (desired_length_ms * sample_rate) / 1000;
   std::vector<float> trimmed_samples;
   TrimToLoudestSegment(wav_samples, desired_samples, &trimmed_samples);
+  float total_volume = 0.0f;
+  for (float trimmed_sample : trimmed_samples) {
+    total_volume += fabsf(trimmed_sample);
+  }
+  const float average_volume = total_volume / desired_samples;
+  if (average_volume < min_volume) {
+    std::cerr << "Skipped '" << input_filename << "' as too quiet (" 
+	      << average_volume << ")" << std::endl;
+    return Status::OK();
+  }
 
   std::string output_wav_data;
   Status save_wav_status =
@@ -185,8 +196,9 @@ int main(int argc, const char* argv[]) {
     const std::string input_filename = input_filenames[i];
     const std::string output_filename = output_filenames[i];
     const int64_t desired_length_ms = 1000;
+    const float min_volume = 0.004f;
     Status trim_status =
-        TrimFile(input_filename, output_filename, desired_length_ms);
+      TrimFile(input_filename, output_filename, desired_length_ms, min_volume);
     if (!trim_status.ok()) {
       std::cerr << "Failed on '" << input_filename << "' => '"
                 << output_filename << "' with error " << trim_status;
