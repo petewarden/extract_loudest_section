@@ -41,6 +41,9 @@ class MemMappedFile {
         mmap(NULL, filesize_, PROT_READ, MAP_PRIVATE, fd_, 0));
     assert(fd_ != -1);
     // Execute mmap
+    if (data_ == MAP_FAILED) {
+      fprintf(stderr, "mmap() failed with %p for '%s'\n", data_, filename.c_str());
+    }
     assert(data_ != MAP_FAILED);
   }
   ~MemMappedFile() {
@@ -103,11 +106,19 @@ Status TrimFile(const std::string& input_filename,
     return load_wav_status;
   }
 
+  // If we have a stereo or more recording, convert it down to mono.
   if (channel_count != 1) {
-    std::cerr << "Stereo or wavs with more channels aren't supported"
-              << std::endl;
-    return errors::InvalidArgument(
-        "Stereo or multi-channel wavs aren't supported");
+    const int mono_sample_count = sample_count / channel_count;
+    std::vector<float> mono_samples(mono_sample_count);
+    for (int i = 0; i < mono_sample_count; ++i) {
+      const int frame_index = i * channel_count;
+      float total = 0.0f;
+      for (int c = 0; c < channel_count; ++c) {
+    	total += wav_samples[frame_index + c];
+      }
+      mono_samples[i] = total / channel_count;
+    }
+     wav_samples = mono_samples;
   }
 
   const int64_t desired_samples = (desired_length_ms * sample_rate) / 1000;
@@ -116,7 +127,7 @@ Status TrimFile(const std::string& input_filename,
 
   std::string output_wav_data;
   Status save_wav_status =
-      EncodeAudioAsS16LEWav(trimmed_samples.data(), sample_rate, channel_count,
+      EncodeAudioAsS16LEWav(trimmed_samples.data(), sample_rate, 1,
                             trimmed_samples.size(), &output_wav_data);
 
   std::ofstream output_file(output_filename);
@@ -154,7 +165,10 @@ int main(int argc, const char* argv[]) {
   std::vector<std::string> output_filenames;
   std::set<std::string> output_dirs;
   for (const std::string& input_filename : input_filenames) {
-    std::string output_filename = output_root + "/" + input_filename;
+    std::string input_dir;
+    std::string input_base;
+    SplitFilename(input_filename, &input_dir, &input_base);
+    std::string output_filename = output_root + "/" + input_base;
     output_filenames.push_back(output_filename);
     std::string output_dir;
     std::string output_base;
@@ -176,7 +190,6 @@ int main(int argc, const char* argv[]) {
     if (!trim_status.ok()) {
       std::cerr << "Failed on '" << input_filename << "' => '"
                 << output_filename << "' with error " << trim_status;
-      return -1;
     }
   }
 
