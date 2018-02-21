@@ -7,7 +7,7 @@ the word. Complex alignment of the kind used to go from spoken sentences to time
 be not as reliable as I'd like on this task, so since my requirements are straightforward, and I
 couldn't find a good equivalent in ffmpeg or sox, I've put this one together.
 
-It works by going through the audio samples and calculating the root-mean square value of each
+It works by going through the audio samples and calculating the absolute value of each
 sample. This approximates the volume at that point. The desired length of the audio is specified
 (currently hard-coded in main.cc as `desired_length_ms`), and the sum of all the volumes for a
 window of that length at all possible positions in the audio's timeline is calculated. The window
